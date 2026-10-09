@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Austin Events - What's Happening in ATX</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Austin Events</h1>
+        <p class="subtitle">Raves, Art, Markets, Food & More - Next 2 Weeks</p>
+    </header>
+
+    <nav class="filters">
+        {% for category in categories %}
+        <button class="filter-btn {% if category == 'All' %}active{% endif %}"
+                data-category="{{ category }}">
+            {{ category }}
+        </button>
+        {% endfor %}
+    </nav>
+
+    <div class="view-toggle">
+        <button class="view-btn active" data-view="list">List View</button>
+        <button class="view-btn" data-view="calendar">Calendar View</button>
+    </div>
+
+    <main>
+        <section class="map-container">
+            <div id="map"></div>
+        </section>
+
+        <section class="events-container">
+            <!-- Calendar View -->
+            <div id="calendar-view" class="calendar-view" style="display: none;">
+                <div class="calendar-header">
+                    <h2>Event Calendar</h2>
+                </div>
+                <div class="calendar-grid">
+                    <div class="calendar-weekdays">
+                        <span>Sun</span>
+                        <span>Mon</span>
+                        <span>Tue</span>
+                        <span>Wed</span>
+                        <span>Thu</span>
+                        <span>Fri</span>
+                        <span>Sat</span>
+                    </div>
+                    <div class="calendar-days" id="calendar-days">
+                        <!-- Days will be populated by JavaScript -->
+                    </div>
+                </div>
+                <div class="day-events" id="day-events">
+                    <h3 id="selected-date">Select a day to see events</h3>
+                    <div id="day-events-list"></div>
+                </div>
+            </div>
+
+            <!-- List View -->
+            <div id="list-view">
+                <h2>Upcoming Events</h2>
+                <div id="events-list">
+                    {% for event in events %}
+                    <article class="event-card" data-category="{{ event.category }}"
+                             data-lat="{{ event.lat }}" data-lng="{{ event.lng }}"
+                             data-date="{{ event.date[:10] }}">
+                        <div class="event-date">
+                            <span class="day">{{ event.date[:10] }}</span>
+                            <span class="time">{{ event.date[11:16] if event.date|length > 11 else '' }}</span>
+                        </div>
+                        <div class="event-details">
+                            <h3>{{ event.title }}</h3>
+                            <p class="venue">{{ event.venue }}</p>
+                            <p class="description">{{ event.description }}</p>
+                            <div class="event-meta">
+                                <span class="category {{ event.category|lower }}">{{ event.category }}</span>
+                                {% if event.source == 'Eventbrite' %}
+                                <a href="https://www.eventbrite.com/d/tx--austin/events/" target="_blank" rel="noopener" class="source">via Eventbrite</a>
+                                {% elif event.source == 'Yelp' %}
+                                <a href="https://www.yelp.com/search?find_desc=restaurants&find_loc=Austin%2C+TX" target="_blank" rel="noopener" class="source">via Yelp</a>
+                                {% elif event.source == 'Do512' %}
+                                <a href="https://do512.com/events" target="_blank" rel="noopener" class="source">via Do512</a>
+                                {% elif event.source == 'Austin Chronicle' %}
+                                <a href="https://www.austinchronicle.com/events/" target="_blank" rel="noopener" class="source">via Austin Chronicle</a>
+                                {% elif event.source == 'Resident Advisor' %}
+                                <a href="https://ra.co/events/us/texas/austin" target="_blank" rel="noopener" class="source">via Resident Advisor</a>
+                                {% elif event.source == '19hz' %}
+                                <a href="https://19hz.info/eventlisting_Texas.php" target="_blank" rel="noopener" class="source">via 19hz</a>
+                                {% elif event.source == 'Kingdom' %}
+                                <a href="https://do512.com/venues/kingdom-austin" target="_blank" rel="noopener" class="source">via Kingdom</a>
+                                {% elif event.source == 'The Concourse Project' %}
+                                <a href="https://do512.com/venues/the-concourse-project" target="_blank" rel="noopener" class="source">via Concourse Project</a>
+                                {% elif event.source == 'EDM Train' %}
+                                <a href="https://edmtrain.com/austin-tx" target="_blank" rel="noopener" class="source">via EDM Train</a>
+                                {% else %}
+                                <span class="source">via {{ event.source }}</span>
+                                {% endif %}
+                                {% if event.url %}
+                                <a href="{{ event.url }}" target="_blank" rel="noopener">Details &rarr;</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Data from
+            <a href="https://do512.com/events" target="_blank">Do512</a>,
+            <a href="https://www.austinchronicle.com/events/" target="_blank">Austin Chronicle</a>,
+            <a href="https://edmtrain.com/austin-tx" target="_blank">EDM Train</a>,
+            <a href="https://19hz.info/eventlisting_Texas.php" target="_blank">19hz</a>,
+            <a href="https://do512.com/venues/kingdom-austin" target="_blank">Kingdom</a>,
+            <a href="https://do512.com/venues/the-concourse-project" target="_blank">Concourse Project</a>,
+            <a href="https://www.yelp.com/search?find_desc=restaurants&find_loc=Austin%2C+TX" target="_blank">Yelp</a>
+        </p>
+        <p>Map: <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> + <a href="https://leafletjs.com/" target="_blank">Leaflet.js</a></p>
+    </footer>
+
+    <script>
+        // Initialize map centered on Austin
+        const map = L.map('map').setView([{{ austin_lat }}, {{ austin_lng }}], 12);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // Category colors
+        const categoryColors = {
+            'Music': '#e74c3c',
+            'Art': '#9b59b6',
+            'Food': '#f39c12',
+            'Markets': '#27ae60',
+            'Nightlife': '#3498db',
+            'Other': '#95a5a6'
+        };
+
+        // Store events data for calendar
+        const eventsData = [];
+        const markers = [];
+
+        // Add markers for all events and collect data
+        document.querySelectorAll('.event-card').forEach(card => {
+            const lat = parseFloat(card.dataset.lat);
+            const lng = parseFloat(card.dataset.lng);
+            const category = card.dataset.category;
+            const date = card.dataset.date;
+            const title = card.querySelector('h3').textContent;
+            const venue = card.querySelector('.venue')?.textContent || '';
+            const time = card.querySelector('.time')?.textContent || '';
+
+            // Store event data
+            eventsData.push({
+                title,
+                venue,
+                category,
+                date,
+                time,
+                lat,
+                lng,
+                element: card
+            });
+
+            if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+                const marker = L.circleMarker([lat, lng], {
+                    radius: 8,
+                    fillColor: categoryColors[category] || '#95a5a6',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+
+                marker.bindPopup(`<strong>${title}</strong><br>${category}`);
+                marker.category = category;
+                markers.push(marker);
+
+                card.addEventListener('click', () => {
+                    map.setView([lat, lng], 14);
+                    marker.openPopup();
+                });
+            }
+        });
+
+        // Current filter category
+        let currentCategory = 'All';
+
+        // Filter functionality
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentCategory = btn.dataset.category;
+
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Filter list view
+                document.querySelectorAll('.event-card').forEach(card => {
+                    if (currentCategory === 'All' || card.dataset.category === currentCategory) {
+                        card.style.display = 'flex';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                // Filter map markers
+                markers.forEach(marker => {
+                    if (currentCategory === 'All' || marker.category === currentCategory) {
+                        marker.setStyle({ opacity: 1, fillOpacity: 0.8 });
+                    } else {
+                        marker.setStyle({ opacity: 0.2, fillOpacity: 0.2 });
+                    }
+                });
+
+                // Rebuild calendar if visible
+                if (document.getElementById('calendar-view').style.display !== 'none') {
+                    buildCalendar();
+                }
+            });
+        });
+
+        // View toggle
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.view;
+
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                if (view === 'calendar') {
+                    document.getElementById('list-view').style.display = 'none';
+                    document.getElementById('calendar-view').style.display = 'block';
+                    buildCalendar();
+                } else {
+                    document.getElementById('list-view').style.display = 'block';
+                    document.getElementById('calendar-view').style.display = 'none';
+                }
+            });
+        });
+
+        // Build calendar
+        function buildCalendar() {
+            const calendarDays = document.getElementById('calendar-days');
+            calendarDays.innerHTML = '';
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Get filtered events
+            const filteredEvents = eventsData.filter(e =>
+                currentCategory === 'All' || e.category === currentCategory
+            );
+
+            // Count events per day
+            const eventCounts = {};
+            filteredEvents.forEach(event => {
+                if (!eventCounts[event.date]) {
+                    eventCounts[event.date] = [];
+                }
+                eventCounts[event.date].push(event);
+            });
+
+            // Find start of week containing today
+            const startDate = new Date(today);
+            startDate.setDate(startDate.getDate() - startDate.getDay());
+
+            // Generate 3 weeks of days (21 days)
+            for (let i = 0; i < 21; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+
+                const dateStr = date.toISOString().split('T')[0];
+                const dayEvents = eventCounts[dateStr] || [];
+                const isToday = date.getTime() === today.getTime();
+                const isPast = date < today;
+
+                const dayEl = document.createElement('div');
+                dayEl.className = `calendar-day${isToday ? ' today' : ''}${isPast ? ' past' : ''}${dayEvents.length > 0 ? ' has-events' : ''}`;
+                dayEl.dataset.date = dateStr;
+
+                dayEl.innerHTML = `
+                    <span class="day-number">${date.getDate()}</span>
+                    <span class="month-label">${date.toLocaleDateString('en-US', { month: 'short' })}</span>
+                    ${dayEvents.length > 0 ? `<span class="event-count">${dayEvents.length} event${dayEvents.length > 1 ? 's' : ''}</span>` : ''}
+                    <div class="event-dots">
+                        ${dayEvents.slice(0, 4).map(e => `<span class="dot" style="background:${categoryColors[e.category] || '#95a5a6'}"></span>`).join('')}
+                    </div>
+                `;
+
+                if (dayEvents.length > 0) {
+                    dayEl.addEventListener('click', () => showDayEvents(dateStr, dayEvents));
+                }
+
+                calendarDays.appendChild(dayEl);
+            }
+        }
+
+        // Show events for selected day
+        function showDayEvents(dateStr, events) {
+            const date = new Date(dateStr + 'T00:00:00');
+            const formatted = date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            document.getElementById('selected-date').textContent = formatted;
+
+            const listEl = document.getElementById('day-events-list');
+            listEl.innerHTML = events.map(event => `
+                <div class="day-event-item" style="border-left: 3px solid ${categoryColors[event.category] || '#95a5a6'}">
+                    <strong>${event.title}</strong>
+                    <span class="day-event-venue">${event.venue}</span>
+                    <span class="day-event-time">${event.time || 'Time TBA'}</span>
+                    <span class="day-event-category">${event.category}</span>
+                </div>
+            `).join('');
+
+            // Highlight selected day
+            document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+            document.querySelector(`.calendar-day[data-date="${dateStr}"]`)?.classList.add('selected');
+        }
+    </script>
+</body>
+</html>

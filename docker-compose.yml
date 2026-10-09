@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - EVENTBRITE_API_KEY=${EVENTBRITE_API_KEY:-}
+      - YELP_API_KEY=${YELP_API_KEY:-}
+    volumes:
+      # Persist cache between restarts
+      - cache_data:/app/cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Development configuration
+  web-dev:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - EVENTBRITE_API_KEY=${EVENTBRITE_API_KEY:-}
+      - YELP_API_KEY=${YELP_API_KEY:-}
+    volumes:
+      - .:/app
+      - cache_data:/app/cache
+    command: python app.py
+    profiles:
+      - dev
+
+volumes:
+  cache_data:
