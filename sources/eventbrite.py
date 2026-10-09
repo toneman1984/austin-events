@@ -47,7 +47,7 @@ def categorize_event(title):
         return 'Art'
     elif any(word in title_lower for word in ['food', 'restaurant', 'tasting', 'brunch', 'dinner', 'chef']):
         return 'Food'
-    elif any(word in title_lower for word in ['market', 'fair', 'bazaar', 'craft', 'vintage']):
+    elif any(word in title_lower for word in ['market', 'fair', 'bazaar', 'craft', 'vintage', 'flea', 'farmers', 'artisan', 'pop-up', 'popup', 'swap', 'thrift', 'handmade', 'vendor']):
         return 'Markets'
     elif any(word in title_lower for word in ['club', 'party', 'night', 'dance']):
         return 'Nightlife'

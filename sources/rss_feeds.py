@@ -65,7 +65,7 @@ def categorize_from_content(title, description):
         return 'Art'
     elif any(word in content for word in ['food', 'restaurant', 'tasting', 'dinner', 'brunch', 'chef']):
         return 'Food'
-    elif any(word in content for word in ['market', 'fair', 'bazaar', 'vintage', 'craft']):
+    elif any(word in content for word in ['market', 'fair', 'bazaar', 'vintage', 'craft', 'flea', 'farmers', 'artisan', 'pop-up', 'popup', 'swap', 'thrift', 'handmade', 'vendor']):
         return 'Markets'
     elif any(word in content for word in ['club', 'party', 'night', 'dance', 'rave']):
         return 'Nightlife'
@@ -368,9 +368,70 @@ def get_demo_chronicle_events():
     ]
 
 
+def scrape_do512_markets():
+    """Scrape markets/shopping events from Do512."""
+    if is_cache_valid('do512_markets'):
+        return load_from_cache('do512_markets')
+
+    events = []
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        response = requests.get('https://do512.com/events/categories/markets', headers=headers, timeout=10)
+
+        if response.status_code != 200:
+            print(f"Do512 Markets error: Status {response.status_code}")
+            return []
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Find event cards
+        event_links = soup.select('a[href*="/events/"]')
+        seen_titles = set()
+
+        for link in event_links[:30]:
+            try:
+                title = link.get_text(strip=True)
+                href = link.get('href', '')
+
+                if not title or len(title) < 3 or title in seen_titles:
+                    continue
+                if title.lower() in ['events', 'view all', 'see more', 'markets']:
+                    continue
+
+                seen_titles.add(title)
+                url = 'https://do512.com' + href if href.startswith('/') else href
+
+                events.append({
+                    'id': f"do512m_{hash(url) % 100000}",
+                    'title': title,
+                    'description': 'Market event in Austin',
+                    'date': datetime.now().strftime('%Y-%m-%dT10:00:00'),
+                    'venue': 'See event details',
+                    'address': 'Austin, TX',
+                    'lat': AUSTIN_LAT + (hash(title) % 100) / 1000 - 0.05,
+                    'lng': AUSTIN_LNG + (hash(url) % 100) / 1000 - 0.05,
+                    'url': url,
+                    'category': 'Markets',
+                    'source': 'Do512',
+                })
+            except Exception:
+                continue
+
+        print(f"Do512 Markets: Found {len(events)} events")
+
+        if events:
+            save_to_cache('do512_markets', events)
+        return events
+
+    except Exception as e:
+        print(f"Do512 Markets error: {e}")
+        return []
+
+
 def fetch_all_rss_events():
     """Fetch events from all RSS sources."""
     events = []
     events.extend(fetch_do512_events())
     events.extend(fetch_chronicle_events())
+    events.extend(scrape_do512_markets())
     return events
