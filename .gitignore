@@ -75,6 +75,7 @@ cache/*.json
 !cache/.gitkeep
 
 # Secrets (never commit these!)
+.env
 config_local.py
 *.pem
 *.key

@@ -1,8 +1,13 @@
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # API Keys - set these as environment variables
-EVENTBRITE_API_KEY = '24IIKPJS6XJ3VMFEEPX4'
-YELP_API_KEY = 'ML7kfLxVS_2DFVcsxi7N_Q-DvnljYRQMnJ_A-snSviGawnTLcvr8E54-oH1NSqe2H49_kbDGlNe7Nu2amYWaskLCVPoLeZVlUKyFGVNQ6LiMlk48NDMMc-eQ8gPIanYx'
+# Example: export YELP_API_KEY=your_key_here
+EVENTBRITE_API_KEY = os.environ.get('EVENTBRITE_API_KEY', '')
+YELP_API_KEY = os.environ.get('YELP_API_KEY', '')
 
 # Austin, TX coordinates
 AUSTIN_LAT = 30.2672
