@@ -5,6 +5,9 @@
 [![Flask](https://img.shields.io/badge/flask-2.3+-green.svg)](https://flask.palletsprojects.com/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://austin-events.onrender.com/)
+
+**[🌐 View Live Demo](https://austin-events.onrender.com/)**
 
 A full-stack web application that aggregates events, concerts, art exhibits, markets, and nightlife happenings in Austin, TX. Features interactive mapping with Leaflet.js, real-time data aggregation from multiple sources, and a responsive calendar view.
 
@@ -201,6 +204,16 @@ docker run -p 5000:5000 austin-events
 ```
 
 ## Deployment
+
+### Render (Current Production)
+
+The app is deployed at **https://austin-events.onrender.com/**
+
+1. Connect your GitHub repository to Render
+2. Create a new Web Service
+3. Select Docker as the environment
+4. Configure environment variables in the Render dashboard
+5. Deploy automatically on push to main
 
 ### AWS ECS
 
